@@ -1,0 +1,985 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+  schemas      = ["auth", "public"]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model audit_log_entries {
+  instance_id String?   @db.Uuid
+  id          String    @id @db.Uuid
+  payload     Json?     @db.Json
+  created_at  DateTime? @db.Timestamptz(6)
+  ip_address  String    @default("") @db.VarChar(64)
+
+  @@index([instance_id], map: "audit_logs_instance_id_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model flow_state {
+  id                     String                @id @db.Uuid
+  user_id                String?               @db.Uuid
+  auth_code              String
+  code_challenge_method  code_challenge_method
+  code_challenge         String
+  provider_type          String
+  provider_access_token  String?
+  provider_refresh_token String?
+  created_at             DateTime?             @db.Timestamptz(6)
+  updated_at             DateTime?             @db.Timestamptz(6)
+  authentication_method  String
+  auth_code_issued_at    DateTime?             @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)])
+  @@index([auth_code], map: "idx_auth_code")
+  @@index([user_id, authentication_method], map: "idx_user_id_auth_method")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model identities {
+  provider_id     String
+  user_id         String    @db.Uuid
+  identity_data   Json
+  provider        String
+  last_sign_in_at DateTime? @db.Timestamptz(6)
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  email           String?   @default(dbgenerated("lower((identity_data ->> 'email'::text))"))
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  @@unique([provider_id, provider], map: "identities_provider_id_provider_unique")
+  @@index([email])
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model instances {
+  id              String    @id @db.Uuid
+  uuid            String?   @db.Uuid
+  raw_base_config String?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_amr_claims {
+  session_id            String   @db.Uuid
+  created_at            DateTime @db.Timestamptz(6)
+  updated_at            DateTime @db.Timestamptz(6)
+  authentication_method String
+  id                    String   @id(map: "amr_id_pk") @db.Uuid
+
+  @@unique([session_id, authentication_method], map: "mfa_amr_claims_session_id_authentication_method_pkey")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_challenges {
+  id          String    @id @db.Uuid
+  factor_id   String    @db.Uuid
+  created_at  DateTime  @db.Timestamptz(6)
+  verified_at DateTime? @db.Timestamptz(6)
+  ip_address  String    @db.Inet
+
+  @@index([created_at(sort: Desc)], map: "mfa_challenge_created_at_idx")
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model mfa_factors {
+  id            String        @id @db.Uuid
+  user_id       String        @db.Uuid
+  friendly_name String?
+  factor_type   factor_type
+  status        factor_status
+  created_at    DateTime      @db.Timestamptz(6)
+  updated_at    DateTime      @db.Timestamptz(6)
+  secret        String?
+
+  @@index([user_id, created_at], map: "factor_id_created_at_idx")
+  @@index([user_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model one_time_tokens {
+  id         String              @id @db.Uuid
+  user_id    String              @db.Uuid
+  token_type one_time_token_type
+  token_hash String
+  relates_to String
+  created_at DateTime            @default(now()) @db.Timestamp(6)
+  updated_at DateTime            @default(now()) @db.Timestamp(6)
+
+  @@unique([user_id, token_type])
+  @@index([relates_to], map: "one_time_tokens_relates_to_hash_idx", type: Hash)
+  @@index([token_hash], map: "one_time_tokens_token_hash_hash_idx", type: Hash)
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model refresh_tokens {
+  instance_id String?   @db.Uuid
+  id          BigInt    @id @default(autoincrement())
+  token       String?   @unique(map: "refresh_tokens_token_unique") @db.VarChar(255)
+  user_id     String?   @db.VarChar(255)
+  revoked     Boolean?
+  created_at  DateTime? @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  parent      String?   @db.VarChar(255)
+  session_id  String?   @db.Uuid
+
+  @@index([instance_id])
+  @@index([instance_id, user_id])
+  @@index([parent])
+  @@index([session_id, revoked])
+  @@index([updated_at(sort: Desc)])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model saml_providers {
+  id                String    @id @db.Uuid
+  sso_provider_id   String    @db.Uuid
+  entity_id         String    @unique
+  metadata_xml      String
+  metadata_url      String?
+  attribute_mapping Json?
+  created_at        DateTime? @db.Timestamptz(6)
+  updated_at        DateTime? @db.Timestamptz(6)
+  name_id_format    String?
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model saml_relay_states {
+  id              String    @id @db.Uuid
+  sso_provider_id String    @db.Uuid
+  request_id      String
+  for_email       String?
+  redirect_to     String?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  flow_state_id   String?   @db.Uuid
+
+  @@index([created_at(sort: Desc)])
+  @@index([for_email])
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model schema_migrations {
+  version String @id @db.VarChar(255)
+
+  @@schema("auth")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sessions {
+  id           String     @id @db.Uuid
+  user_id      String     @db.Uuid
+  created_at   DateTime?  @db.Timestamptz(6)
+  updated_at   DateTime?  @db.Timestamptz(6)
+  factor_id    String?    @db.Uuid
+  aal          aal_level?
+  not_after    DateTime?  @db.Timestamptz(6)
+  refreshed_at DateTime?  @db.Timestamp(6)
+  user_agent   String?
+  ip           String?    @db.Inet
+  tag          String?
+
+  @@index([not_after(sort: Desc)])
+  @@index([user_id])
+  @@index([user_id, created_at], map: "user_id_created_at_idx")
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_domains {
+  id              String    @id @db.Uuid
+  sso_provider_id String    @db.Uuid
+  domain          String
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@index([sso_provider_id])
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model sso_providers {
+  id          String    @id @db.Uuid
+  resource_id String?
+  created_at  DateTime? @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+
+  @@schema("auth")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  instance_id                 String?   @db.Uuid
+  id                          String    @id @db.Uuid
+  aud                         String?   @db.VarChar(255)
+  role                        String?   @db.VarChar(255)
+  email                       String?   @db.VarChar(255)
+  encrypted_password          String?   @db.VarChar(255)
+  email_confirmed_at          DateTime? @db.Timestamptz(6)
+  invited_at                  DateTime? @db.Timestamptz(6)
+  confirmation_token          String?   @db.VarChar(255)
+  confirmation_sent_at        DateTime? @db.Timestamptz(6)
+  recovery_token              String?   @db.VarChar(255)
+  recovery_sent_at            DateTime? @db.Timestamptz(6)
+  email_change_token_new      String?   @db.VarChar(255)
+  email_change                String?   @db.VarChar(255)
+  email_change_sent_at        DateTime? @db.Timestamptz(6)
+  last_sign_in_at             DateTime? @db.Timestamptz(6)
+  raw_app_meta_data           Json?
+  raw_user_meta_data          Json?
+  is_super_admin              Boolean?
+  created_at                  DateTime? @db.Timestamptz(6)
+  updated_at                  DateTime? @db.Timestamptz(6)
+  phone                       String?   @unique
+  phone_confirmed_at          DateTime? @db.Timestamptz(6)
+  phone_change                String?   @default("")
+  phone_change_token          String?   @default("") @db.VarChar(255)
+  phone_change_sent_at        DateTime? @db.Timestamptz(6)
+  confirmed_at                DateTime? @default(dbgenerated("LEAST(email_confirmed_at, phone_confirmed_at)")) @db.Timestamptz(6)
+  email_change_token_current  String?   @default("") @db.VarChar(255)
+  email_change_confirm_status Int?      @default(0) @db.SmallInt
+  banned_until                DateTime? @db.Timestamptz(6)
+  reauthentication_token      String?   @default("") @db.VarChar(255)
+  reauthentication_sent_at    DateTime? @db.Timestamptz(6)
+  is_sso_user                 Boolean   @default(false)
+  deleted_at                  DateTime? @db.Timestamptz(6)
+  is_anonymous                Boolean   @default(false)
+
+  @@index([instance_id])
+  @@index([is_anonymous])
+  @@schema("auth")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_connection_types {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  type_id    BigInt   @unique @default(autoincrement())
+  name       String
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_decoders {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  decoder    String?
+  name       String   @default("Unnamed Decoder")
+  decoder_id BigInt   @unique @default(autoincrement())
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_in_connections {
+  id              BigInt   @id(map: "babylon_connections_pkey") @default(autoincrement())
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  profile_id      String   @db.Uuid
+  endpoint        String
+  username        String?
+  password        String?
+  connection_name String
+  port            Decimal? @db.Decimal
+  type            BigInt
+  connection_id   BigInt   @unique @default(autoincrement())
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_input_output {
+  id         BigInt   @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  in_id      BigInt
+  out_id     BigInt
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_notifier_types {
+  id          BigInt   @id(map: "babylon_notifier_type_pkey") @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  notifier_id BigInt   @unique(map: "babylon_notifier_type_notifier_id_key") @default(autoincrement())
+  name        String   @unique(map: "babylon_notifier_type_name_key")
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_notifiers {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  notifier_id BigInt?
+  name        String
+  username    String?
+  password    String?
+  api_key     String?
+  host        String?
+  port        Decimal? @db.Decimal
+  isSecure    Boolean  @default(false)
+  type        BigInt?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_notifiers_out_connections {
+  id                BigInt   @id @default(autoincrement())
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  notifier_id       BigInt
+  out_connection_id BigInt
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model babylon_out_connections {
+  id              BigInt   @id @default(autoincrement())
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  profile_id      String   @db.Uuid
+  endpoint        String?
+  username        String?
+  password        String?
+  connection_name String
+  port            Decimal? @db.Decimal
+  type            BigInt
+  connection_id   BigInt   @unique @default(autoincrement())
+  decoder         BigInt?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_air_thvd {
+  id           BigInt   @id @default(autoincrement())
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  dewPointC    Decimal? @db.Decimal
+  humidity     Decimal  @db.Decimal
+  temperatureC Decimal  @db.Decimal
+  vpd          Decimal? @db.Decimal
+  dev_eui      String   @db.VarChar
+  profile_id   String?  @db.Uuid
+
+  @@schema("public")
+}
+
+model cw_co2_alerts {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  profile_id  String   @db.Uuid
+  dev_eui     String   @db.VarChar
+  operator    String
+  action      String
+  subject     String
+  receiver    String
+  cleared     Boolean
+  value       Decimal  @db.Decimal
+  OneSignalID String?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_co2_uplinks {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui     String?  @db.VarChar
+  battery     Int?
+  temperature Decimal  @db.Decimal
+  humidity    Decimal  @db.Decimal
+  co2_level   Decimal? @db.Decimal
+  pressure    Decimal? @db.Decimal
+  profile_id  String?  @db.Uuid
+
+  @@schema("public")
+}
+
+model cw_device_locations {
+  dev_eui     String @unique @db.VarChar(255)
+  location_id BigInt
+  id          BigInt @id @default(autoincrement())
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_device_owners {
+  user_id          String  @db.Uuid
+  dev_eui          String  @db.VarChar(255)
+  owner_id         BigInt  @unique @default(autoincrement())
+  id               BigInt  @id @default(autoincrement())
+  permission_level Decimal @default(1) @db.Decimal
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_device_type {
+  id                      BigInt   @id @default(autoincrement())
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  name                    String   @unique
+  model                   String?
+  decoder                 String?
+  manufacturer            String?
+  data_table              String?
+  device_app              String?
+  primary_data            String?
+  primary_data_notation   String?
+  secondary_data          String?
+  secondary_data_notation String?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_devices {
+  dev_eui            String    @id(map: "pk_cw_devices") @db.VarChar(255)
+  name               String    @default("UnNamed Device")
+  type               BigInt?
+  upload_interval    Decimal?  @default(-1) @db.Decimal
+  lat                Decimal?  @db.Decimal
+  long               Decimal?  @db.Decimal
+  installed_at       DateTime? @db.Date
+  battery_changed_at DateTime? @db.Date
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_gateways {
+  id           BigInt    @id @default(autoincrement())
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+  gateway_name String
+  isOnline     Boolean
+  gateway_id   String    @unique
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_gps_uplinks {
+  id             BigInt                   @id @default(autoincrement())
+  created_at     DateTime                 @default(now()) @db.Timestamptz(6)
+  dev_eui        String                   @db.VarChar
+  latitude       Decimal                  @db.Decimal
+  longitude      Decimal                  @db.Decimal
+  geoPos         Unsupported("geometry")?
+  isHistoric     Boolean                  @default(false)
+  altitude       Decimal?                 @db.Decimal
+  hdop           Decimal?                 @db.Decimal
+  battery        Decimal?                 @db.Decimal
+  collected_time DateTime?                @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_location_owners {
+  user_id          String   @db.Uuid
+  owner_id         BigInt   @unique @default(autoincrement())
+  id               BigInt   @id @default(autoincrement())
+  location_id      BigInt
+  permission_level Decimal? @default(1) @db.Decimal
+  is_active        Boolean?
+  description      String?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_locations {
+  location_id BigInt   @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  latitude    Decimal? @db.Decimal(9, 6)
+  longitude   Decimal? @db.Decimal(9, 6)
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  owner_id    String?  @db.Uuid
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_permission_level_types {
+  id                  BigInt   @id @default(autoincrement())
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  permission_level_id BigInt   @unique @default(autoincrement())
+  name                String   @unique
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_pulse_meters {
+  id             BigInt   @id @default(autoincrement())
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  count          Decimal  @default(0) @db.Decimal
+  dev_eui        String   @db.VarChar
+  periodCount    Decimal  @default(0) @db.Decimal
+  litersPerPulse Decimal  @default(10) @db.Decimal
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_rule_criteria {
+  id            BigInt   @id(map: "cw_rule_criterion_pkey") @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  subject       String
+  operator      String
+  trigger_value Decimal  @db.Decimal
+  reset_value   Decimal? @db.Decimal
+  ruleGroupId   String
+  parent_id     String?  @unique
+  criteria_id   BigInt?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_rules {
+  id                    BigInt    @id @default(autoincrement())
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  dev_eui               String?   @db.VarChar
+  name                  String
+  babylon_notifier_type BigInt
+  action_recipient      String
+  is_triggered          Boolean   @default(false)
+  last_triggered        DateTime? @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  ruleGroupId           String    @unique
+  profile_id            String    @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trigger_count         Decimal   @default(0) @db.Decimal
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_soil_uplinks {
+  id            BigInt   @id @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui       String?  @db.VarChar
+  battery       Int?
+  temperature   Decimal  @db.Decimal
+  moisture      Decimal  @db.Decimal
+  ec            Decimal? @db.Decimal
+  ph            Decimal? @db.Decimal
+  n             Decimal? @db.Decimal
+  p             Decimal? @db.Decimal
+  k             Decimal? @db.Decimal
+  internal_temp Decimal? @db.Decimal
+  real_duration Decimal? @db.Decimal
+  read_attempts Int?
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_ss_tme {
+  id                BigInt   @id @default(autoincrement())
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  soil_EC           Decimal? @db.Decimal
+  soil_moisture     Decimal  @db.Decimal
+  soil_temperatureC Decimal  @db.Decimal
+  dev_eui           String   @db.VarChar
+  modbusAttempts    Int?     @db.SmallInt
+  internalTemp      Decimal? @db.Decimal
+  batteryVoltage    Decimal? @db.Decimal
+  profile_id        String?  @db.Uuid
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cw_ss_tmepnpk {
+  id                BigInt   @id @default(autoincrement())
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  soil_EC           Decimal? @db.Decimal
+  soil_moisture     Decimal  @db.Decimal
+  soil_temperatureC Decimal  @db.Decimal
+  soil_PH           Decimal? @db.Decimal
+  dev_eui           String   @db.VarChar
+  soil_N            Decimal? @db.Decimal
+  soil_P            Decimal? @db.Decimal
+  soil_K            Decimal? @db.Decimal
+  modbusAttempts    Int?     @db.SmallInt
+  internalTemp      Decimal? @db.Decimal
+  batteryVoltage    Decimal? @db.Decimal
+
+  @@schema("public")
+}
+
+model cw_traffic {
+  id           BigInt   @id @default(autoincrement())
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  object_type  String
+  period_in    Decimal  @default(0) @db.Decimal
+  period_out   Decimal  @default(0) @db.Decimal
+  period_total Decimal  @default(0) @db.Decimal
+  dev_eui      String   @db.VarChar
+
+  @@schema("public")
+}
+
+model cw_traffic2 {
+  id            BigInt   @id @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  people_count  Decimal  @default(0) @db.Decimal
+  bicycle_count Decimal  @default(0) @db.Decimal
+  car_count     Decimal  @default(0) @db.Decimal
+  truck_count   Decimal  @default(0) @db.Decimal
+  bus_count     Decimal  @default(0) @db.Decimal
+  dev_eui       String   @db.VarChar
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cw_watermeter_uplinks {
+  id            BigInt   @id(map: "cw_water_meter_pkey") @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui       String   @db.VarChar
+  count         BigInt
+  internal_temp Float?   @db.Real
+  battery_level Int?     @db.SmallInt
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model device_data_metadata {
+  id         BigInt    @id @default(autoincrement())
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  dev_eui    String
+  data_key   String
+  data_type  String
+  display_as String
+  alias      String?
+  divisor    Decimal?  @db.Decimal
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model device_x_user {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui     String
+  email       String   @db.VarChar
+  profile_id  String?  @db.Uuid
+  shared_name String?  @default("Device Shared WIth you")
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model devices {
+  id                BigInt    @id @default(autoincrement())
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  dev_eui           String    @unique
+  profile_id        String?   @db.Uuid
+  type              String?   @default("Not Set")
+  lat               Float?
+  lng               Float?
+  device_name       String?
+  active            Boolean   @default(false)
+  linked_device_eui String?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model location_permissions {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  role_name   BigInt
+  expires_on  DateTime? @db.Timestamptz(6)
+  location_id BigInt
+  granted_to  String?   @db.Uuid
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model locations {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  lat         Decimal?  @db.Decimal
+  lng         Decimal?  @db.Decimal
+  name        String
+  description String?
+  sensor_type String?
+  profile_id  String?   @db.Uuid
+  dev_eui     String?
+
+  @@schema("public")
+}
+
+model locations_x_devices {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  device_id   BigInt
+  location_id BigInt
+
+  @@schema("public")
+}
+
+model lorawatch_uplinks {
+  id              BigInt    @id @default(autoincrement())
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  dev_eui         String
+  f_port          BigInt?
+  f_cnt           BigInt    @default(0)
+  frm_payload     String?
+  decoded_payload Json?
+  metadata        Json?
+  confirmed       Boolean?
+  received_at     DateTime? @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamptz(6)
+  ui_metadata     Json?     @db.Json
+
+  @@schema("public")
+}
+
+model netvox_ra02a {
+  id            BigInt   @id @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui       String   @db.VarChar
+  fireAlarm     Int      @db.SmallInt
+  highTempAlarm Int      @db.SmallInt
+  temperatureC  Decimal  @db.Decimal
+  battery       Decimal  @db.Decimal
+  profile_id    String?  @db.Uuid
+
+  @@schema("public")
+}
+
+model permissions {
+  id                    BigInt    @id @default(autoincrement())
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  resource              String
+  role_id               BigInt
+  allowed_profile_id    String?   @db.Uuid
+  allowed_by_profile_id String?   @db.Uuid
+  description           String?
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id         String    @id @db.Uuid
+  updated_at DateTime? @db.Timestamptz(6)
+  username   String?   @unique
+  full_name  String?
+  avatar_url String?
+  website    String?
+  email      String?   @unique @db.VarChar
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model road_event_lines {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  line_name   String
+  camera_name String
+  camera_id   String    @default("")
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model road_events {
+  id                    BigInt    @id(map: "road_event_pkey") @default(autoincrement())
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  class                 String
+  track_id              Decimal   @db.Decimal
+  direction             Decimal   @db.Decimal
+  source_datetime       DateTime? @db.Timestamptz(6)
+  server_event_datetime DateTime? @default(now()) @db.Timestamptz(6)
+  camera_id             String?
+  line_id               String?
+
+  @@schema("public")
+}
+
+model roles {
+  id          BigInt    @id @default(autoincrement())
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  name        String
+  code        BigInt?
+  description String?
+
+  @@schema("public")
+}
+
+model seeed_co2_lorawan_uplinks {
+  id          Int       @id @default(autoincrement())
+  dev_eui     String    @db.VarChar(255)
+  valid       Boolean?
+  err         Int?
+  payload     String?
+  rssi        Int?
+  snr         Float?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  battery     Int?
+  interval    Int?
+  temperature Float?
+  humidity    Float?
+  co2_level   Int?
+  pressure    Float?
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model seeed_sensecap_s2120 {
+  id             BigInt   @id @default(autoincrement())
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui        String   @db.VarChar
+  profile_id     String?  @db.Uuid
+  temperatureC   Decimal? @db.Decimal
+  humidity       Decimal? @db.Decimal
+  rainfall       Decimal? @db.Decimal
+  pressure       Decimal? @default(92670) @db.Decimal
+  wind_speed     Decimal? @db.Decimal
+  wind_direction Decimal? @default(1) @db.Decimal
+  lux            Decimal? @db.Decimal
+  uv             Decimal? @db.Decimal
+  frame_id       Decimal? @db.Decimal
+
+  @@schema("public")
+}
+
+model seeed_t1000 {
+  id            BigInt   @id(map: "SEEED_T1000_pkey") @default(autoincrement())
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  dev_eui       String   @db.VarChar
+  latitude      Decimal  @db.Decimal
+  longitude     Decimal  @db.Decimal
+  sos           Decimal? @default(0) @db.Decimal
+  battery_level Decimal? @db.Decimal
+  temperatureC  Decimal? @db.Decimal
+  profile_id    String?  @db.Uuid
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model sensors {
+  id               BigInt   @id @default(autoincrement())
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  connected_device String?
+  lat              Decimal? @db.Decimal
+  lng              Decimal? @db.Decimal
+  type             String?
+  address          Decimal? @db.Decimal
+
+  @@schema("public")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model temp_humid_co2_alert_settings {
+  id          BigInt   @id @default(autoincrement())
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  profile_id  String   @db.Uuid
+  dev_eui     String
+  operator    String
+  action      Decimal  @db.Decimal
+  subject     String
+  receiver    String
+  cleared     Boolean
+  value       Decimal  @db.Decimal
+  OneSignalID String?
+
+  @@schema("public")
+}
+
+enum aal_level {
+  aal1
+  aal2
+  aal3
+
+  @@schema("auth")
+}
+
+enum code_challenge_method {
+  s256
+  plain
+
+  @@schema("auth")
+}
+
+enum factor_status {
+  unverified
+  verified
+
+  @@schema("auth")
+}
+
+enum factor_type {
+  totp
+  webauthn
+
+  @@schema("auth")
+}
+
+enum one_time_token_type {
+  confirmation_token
+  reauthentication_token
+  recovery_token
+  email_change_token_new
+  email_change_token_current
+  phone_change_token
+
+  @@schema("auth")
+}
