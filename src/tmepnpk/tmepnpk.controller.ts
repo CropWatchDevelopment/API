@@ -6,7 +6,7 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateTmepnpkDto } from './dto/create-tmepnpk.dto';
 import { UpdateTmepnpkDto } from './dto/update-tmepnpk.dto';
 
-@ApiTags('tmepnpk')
+@ApiTags('[CropWatch] Temperature, Moisture, EC, PH, N, P, K Soil Sensor (cw-ss-tmepnpk)')
 @Controller('tmepnpk')
 export class TmepnpkController {
   constructor(private readonly tmepnpkService: TmepnpkService) {}

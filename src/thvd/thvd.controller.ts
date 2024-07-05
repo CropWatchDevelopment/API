@@ -5,7 +5,7 @@ import { UpdateThvdDto } from './dto/update-thvd.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('thvd')
+@ApiTags('[CropWatch] AIR Temperature, Humidity, VPD, Dew Point (cw-air-thvd)')
 @Controller('thvd')
 export class ThvdController {
   constructor(private readonly thvdService: ThvdService) {}

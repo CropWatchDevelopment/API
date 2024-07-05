@@ -5,7 +5,7 @@ import { UpdateSensecapS2120Dto } from './dto/update-sensecap-s2120.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('seeed_sensecap_s2120')
+@ApiTags('[SEEED] 8-in-1 Weather Station (S2120)')
 @Controller('seeed_sensecap_s2120')
 export class SeeedSensecapS2120Controller {
   constructor(private readonly seeedSensecapS2120Service: SeeedSensecapS2120Service) {}

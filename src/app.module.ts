@@ -13,6 +13,7 @@ import { TmepnpkModule } from './tmepnpk/tmepnpk.module';
 import { SeeedT1000Module } from './seeed_t1000/seeed_t1000.module';
 import { SeeedSensecapS2120Module } from './seeed_sensecap_s2120/seeed_sensecap_s2120.module';
 import { SeeedCo2LorawanUplinksModule } from './seeed_co2_lorawan_uplinks/seeed_co2_lorawan_uplinks.module';
+import { NetvoxRa02aModule } from './netvox_ra02a/netvox_ra02a.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { SeeedCo2LorawanUplinksModule } from './seeed_co2_lorawan_uplinks/seeed_
     TmepnpkModule,
     SeeedT1000Module,
     SeeedSensecapS2120Module,
-    SeeedCo2LorawanUplinksModule
+    SeeedCo2LorawanUplinksModule,
+    NetvoxRa02aModule
   ],
   controllers: [AppController],
   providers: [

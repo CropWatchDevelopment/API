@@ -5,7 +5,7 @@ import { UpdateSeeedT1000Dto } from './dto/update-seeed_t1000.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('seeed_t1000')
+@ApiTags('[SEEED] Tracker Tag (T1000)')
 @Controller('seeed_t1000')
 export class SeeedT1000Controller {
   constructor(private readonly seeedT1000Service: SeeedT1000Service) {}

@@ -5,7 +5,7 @@ import { UpdateSeeedCo2LorawanUplinksDto } from './dto/update-seeed_co2_lorawan_
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('seeed_co2_lorawan_uplinks')
+@ApiTags('[SEEED] CO2 Sensor (S2103)')
 @Controller('seeed_co2_lorawan_uplinks')
 export class SeeedCo2LorawanUplinksController {
   constructor(private readonly seeedCo2LorawanUplinksService: SeeedCo2LorawanUplinksService) {}
