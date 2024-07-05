@@ -9,6 +9,10 @@ import { PrismaService } from './common/prisma.service';
 import { ThvdModule } from './thvd/thvd.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
+import { TmepnpkModule } from './tmepnpk/tmepnpk.module';
+import { SeeedT1000Module } from './seeed_t1000/seeed_t1000.module';
+import { SeeedSensecapS2120Module } from './seeed_sensecap_s2120/seeed_sensecap_s2120.module';
+import { SeeedCo2LorawanUplinksModule } from './seeed_co2_lorawan_uplinks/seeed_co2_lorawan_uplinks.module';
 
 @Module({
   imports: [
@@ -18,7 +22,11 @@ import { BigIntInterceptor } from './common/interceptors/bigint.interceptor';
       isGlobal: true
     }),
     DevicesModule,
-    ThvdModule
+    ThvdModule,
+    TmepnpkModule,
+    SeeedT1000Module,
+    SeeedSensecapS2120Module,
+    SeeedCo2LorawanUplinksModule
   ],
   controllers: [AppController],
   providers: [
